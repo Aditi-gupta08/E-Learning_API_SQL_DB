@@ -15,10 +15,10 @@ router.get( '/', async (req, res) => {
   let [err, data] = await to(db.executeQuery(query));
 
   if(err){
-    return res.status(400).json({err});
+    return res.json({data:null, error: err });
   }
   
-  return res.json({ 'data': data});
+  return res.json({data, error: null });
 });
 
 
@@ -29,10 +29,10 @@ router.get( '/:u_id', async (req, res) => {
   let [err, data] = await to(db.executeQuery(query));
 
   if(err){
-    return res.status(400).json({err});
+    return res.json({data: null, error: err });
   }
   
-  return res.json({ 'data': data});
+  return res.json({data, error: null });
 });
 
 
@@ -49,10 +49,10 @@ router.delete( '/:u_id', utils.verifyToken, async (req, res) => {
 
 
   if( token_user_id != u_id && token_user_id != utils.admin_id)
-      return res.status(403).json({ "err": "User can't delete anyone else!" });
+      return res.json({ data:null, error: "User can't delete anyone else!" });
 
   if(u_id == utils.admin_id)
-      return res.status(403).json({ "err": "Admin can't be deleted !"});
+      return res.json({ data: null, error: "Admin can't be deleted !"});
 
 
   // Incrementing available slots of the courses in which student was enrolled
@@ -60,7 +60,7 @@ router.delete( '/:u_id', utils.verifyToken, async (req, res) => {
 
   let [err, data] = await to(db.executeQuery(query));
   if(err){
-    return res.status(400).json({ "err": "Error in deleting user's enrollment! "});
+    return res.json({ data: null, error: "Error in deleting user's enrollment! "});
   }
 
 
@@ -69,7 +69,7 @@ router.delete( '/:u_id', utils.verifyToken, async (req, res) => {
 
   [err, data] = await to(db.executeQuery(query));
   if(err){
-    return res.status(400).json({ "err": "Error in deleting student's enrollment" });
+    return res.json({ data: null,  error: "Error in deleting student's enrollment" });
   }
 
 
@@ -78,11 +78,11 @@ router.delete( '/:u_id', utils.verifyToken, async (req, res) => {
 
   [err, data] = await to(db.executeQuery(query));
   if(err){
-    return res.status(400).json({ "err": "No user exist with this id" });
+    return res.json({ data: null, error: "No user exist with this id" });
   }
   
   
-  return res.json({ 'message': "success"});
+  return res.json({ data: "success", error: null});
 }); 
 
 

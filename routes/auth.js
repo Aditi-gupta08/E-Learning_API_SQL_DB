@@ -19,7 +19,7 @@ router.post('/signup', async (req, res) => {
     let {name, email, password} = req.body;
 
     if(!name || !email || !password){
-        res.status(400).json({ "err": 'Please enter all 3 details of the user'});
+        res.json({ data: null, error: 'Please enter all 3 details of the user'});
     }
 
     // Checking if user has already signed up   
@@ -28,27 +28,27 @@ router.post('/signup', async (req, res) => {
     let [err, data] = await to(db.executeQuery(query));
 
     if(err){
-      return res.status(400).json({err});
+      return res.json({ data: null, error: err});
     }
 
 
     if(data[0].cnt > 0)
-      return res.status(400).json({ "err": `A user with this email already exists !!` });
+      return res.json({ data: null, error: `A user with this email already exists !!` });
     
     const [tmp, encrypted_pass] = await to( utils.passwordHash(password));
 
     if(tmp)
-        return res.status(400).json({ "err": "Error in encrypting password"});
+        return res.json({ data: null, error: "Error in encrypting password"});
 
 
     query = `INSERT INTO users(name, email, encrypted_pass, login_status) VALUES( \'${name}\', \'${email}\', \'${encrypted_pass}\', false )`;
 
     [err, data] = await to(db.executeQuery(query));
     if(err){
-      return res.status(400).json({err});
+      return res.json({ data: null, error: err});
     }
         
-    return res.json({ "msg": "Successfully signed up !!" });
+    return res.json({ data: "Successfully signed up !!", error: null });
 
 });
 
@@ -59,7 +59,7 @@ router.put('/login', async (req, res) => {
     let {email, password} = req.body;
 
     if(!email || !password){
-        res.status(401).json({ "err": 'Please enter both details of the user: email, password'});
+        res.json({ data: null, error: 'Please enter both details of the user: email, password'});
     }
 
     // Checking if user is signed up or not   
@@ -68,14 +68,14 @@ router.put('/login', async (req, res) => {
     let [err, data] = await to(db.executeQuery(query));
 
     if(err){
-      return res.status(400).json({err});
+      return res.json({ data: null, error: err});
     }
 
     if(data[0].cnt == 0)
-      return res.status(400).json({ "err": `User hasn't signed up !!` });
+      return res.json({  data: null, error: `User hasn't signed up !!` });
 
     if(data[0].login_status == true)
-        return res.status(400).json({ "err": "User is already logged in !"});
+        return res.json({ data: null, error: "User is already logged in !"});
 
     
     const newStudent = {
@@ -89,11 +89,11 @@ router.put('/login', async (req, res) => {
     let [error, isValid] = await to( bcrypt.compare(password, data[0].encrypted_pass) );
 
     if(error){
-        return res.status(400).json({ "error": "Some error occured in comparing password"});
+        return res.json({ data: null, error: "Some error occured in comparing password"});
     }
 
     if(!isValid){
-        return res.status(400).json({ "error": "Incorrect Password !"});
+        return res.json({ data: null, error: "Incorrect Password !"});
     }
     
 
@@ -106,7 +106,7 @@ router.put('/login', async (req, res) => {
     jwt.sign( {newStudent}, 'secretkey', async (err, token) => {
 
         if(err)
-            return res.status(400).json({ "err": "Error in assigning token" });
+            return res.json({ data: null, error: "Error in assigning token" });
 
         // Updating login_status to true
         query = `UPDATE users SET login_status= true WHERE email= \'${email}\' `;
@@ -114,12 +114,12 @@ router.put('/login', async (req, res) => {
         [err, data] = await to(db.executeQuery(query));
 
         if(err){
-        return res.status(400).json({"err": "Some error occured in logging in"});
+        return res.json({ data: null, error: "Some error occured in logging in"});
         }
 
         return res.json({
             "accessToken" : token,
-            "errorrr": err
+            error: err
         });
     }); 
 
@@ -141,19 +141,13 @@ router.put('/logout',utils.verifyToken, async (req, res) => {
     let [err, data] = await to(db.executeQuery(query));
 
     if(err){
-      return res.status(400).json({"err": "Some error occured in logging out"});
+      return res.json({ data: null, error: "Some error occured in logging out"});
     }
 
-    res.json({"msg": "Logged out succesfully !!"});
+    res.json({ data: "Logged out succesfully !!", error: null});
  
 });
 
-
-
-/* 
-router.get('/try', utils.verifyToken, (req, res) => {
-    res.json({"user": "user1"});
-}); */
 
 
 module.exports = router;

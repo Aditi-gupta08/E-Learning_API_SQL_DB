@@ -3,10 +3,6 @@ const router = express.Router();
 const fs = require('fs')
 const path = require('path');
 const utils = require('../data/utils');
-const _path = path.join(__dirname, '..', 'data/STUDENTS.json');
-const cour_path = path.join(__dirname, '..', 'data/COURSES.json');
-//let user = require('../data/user');
-const { fstat } = require('fs');
 const db = require('../data/mysql/index');
 const {to} = require('await-to-js');
 const { admin_id } = require('../data/utils');
@@ -20,9 +16,9 @@ router.get('/', async function(req, res, next) {
   let [err, data] = await to(db.executeQuery(query));
 
   if(err){
-    return res.status(400).json({err});
+    return res.json({data:null, error: err});
   }
-  return res.json({ 'data': data});
+  return res.json({data, error: null});
 
 });
 
@@ -35,7 +31,7 @@ router.get('/:c_id', async (req, res, next) => {
     let [err, data] = await to(db.executeQuery( query ));
 
     if(err){
-      return res.status(400).json({err});
+      return res.json({data: null, error: err});
     }
 
 
@@ -45,11 +41,11 @@ router.get('/:c_id', async (req, res, next) => {
     [err, enrolled_users] = await to(db.executeQuery( query ));
 
     if(err){
-      return res.status(400).json({err});
+      return res.json({data:null, error: err});
     }
 
 
-    return res.json({ 'data': data, "enrolled users": enrolled_users});
+    return res.json({ data: { 'data': data, "enrolled users": enrolled_users}, error: null });
 });
 
 
@@ -64,19 +60,19 @@ router.post( '/addcourse', utils.verifyToken, async (req, res) => {
     let token_user_id = res.cur_user.id;
 
     if( token_user_id != utils.admin_id)
-        return res.status(400).json({ "err": "Only admin can add a course!" });
+        return res.json({ data: null, error: "Only admin can add a course!" });
 
 
     if( !name)
-      return res.status(400).json({error: 'Please provide name of the course'});
+      return res.json({ data: null, error: 'Please provide name of the course'});
 
     if(!available_slots)
-      return res.status(400).json({error: 'Please provide available slots of the course'});
+      return res.json({ data: null, error: 'Please provide available slots of the course'});
 
     available_slots = parseInt( available_slots );
 
     if( available_slots <= 0)
-      return res.status(400).json({error: 'Available slots should be positive'});
+      return res.json({ data: null, error: 'Available slots should be positive'});
 
 
 
@@ -84,10 +80,10 @@ router.post( '/addcourse', utils.verifyToken, async (req, res) => {
 
     let [err, data] = await to(db.executeQuery(query));
     if(err){
-      return res.status(400).json({err});
+      return res.json({ data:null, error: err});
     }
     
-    return res.json({ "message": "success" });
+    return res.json({ data: "success", error: null });
 
 });
 
@@ -101,7 +97,7 @@ router.delete( '/delete/:c_id', utils.verifyToken, async (req, res) => {
   let token_user_id = res.cur_user.id;
 
   if( token_user_id == utils.admin_id)
-      return res.status(400).json({ "err": "Only admin can delete a course!" });
+      return res.json({ data: null, error: "Only admin can delete a course!" });
 
 
   
@@ -111,7 +107,7 @@ router.delete( '/delete/:c_id', utils.verifyToken, async (req, res) => {
   let [err, data] = await to(db.executeQuery(query));
 
   if(err){
-    return res.status(400).json({ "err": "Error in deleting enrollment of students from course !"});
+    return res.json({ data: null, error: "Error in deleting enrollment of students from course !"});
   }
 
 
@@ -122,11 +118,11 @@ router.delete( '/delete/:c_id', utils.verifyToken, async (req, res) => {
   [err, data] = await to(db.executeQuery(query));
 
   if(err){
-    return res.status(400).json({ "err": "No course exist with this id"});
+    return res.json({ data: null, error: "No course exist with this id"});
   }
 
 
-  return res.json({ "message": "success" });
+  return res.json({ data: "success", error });
 });
 
 
@@ -141,7 +137,7 @@ router.put( '/:c_id/enroll', utils.verifyToken, async (req, res) => {
 
     // Checking if student id is provided or not
     if(!u_id)
-      return res.status(400).json({ "err": "Please provide user's id to enroll !"});
+      return res.json({ data: null, error: "Please provide user's id to enroll !"});
 
 
 
@@ -151,12 +147,12 @@ router.put( '/:c_id/enroll', utils.verifyToken, async (req, res) => {
     let [err, data] = await to(db.executeQuery(query));
 
     if(err){
-      return res.status(400).json({err});
+      return res.json({data: null, error: err});
     }
 
 
     if(data[0].cnt == 0)
-      return res.status(400).json({ "err": `No user found with the id ${u_id}` });
+      return res.json({ data: null, error: `No user found with the id ${u_id}` });
 
 
 
@@ -165,16 +161,16 @@ router.put( '/:c_id/enroll', utils.verifyToken, async (req, res) => {
 
     [err, data] = await to(db.executeQuery(query));
     if(err){
-      return res.status(400).json({err});
+      return res.json({ data: null, error});
     }
 
 
     if(data[0].cnt == 0)
-      return res.status(400).json({ "err": `No course found with the id ${c_id}` });
+      return res.json({ data: null, error: `No course found with the id ${c_id}` });
 
     let avl = data[0].available_slots;
     if( avl <= 0)
-      return res.status(400).json({ "err": "No available slots left in this course"});
+      return res.json({ data: null, error: "No available slots left in this course"});
 
     avl = avl-1;
 
@@ -185,11 +181,11 @@ router.put( '/:c_id/enroll', utils.verifyToken, async (req, res) => {
     
     [err, data] = await to(db.executeQuery(query));
     if(err){
-      return res.status(400).json({err});
+      return res.json({ data: null, error: err });
     }
 
     if(data[0].cnt>0)
-      return res.status(400).json({ "err": "The student is already enrolled in the course!" });
+      return res.json({ data: null, error: "The student is already enrolled in the course!" });
 
     
 
@@ -198,10 +194,10 @@ router.put( '/:c_id/enroll', utils.verifyToken, async (req, res) => {
     //console.log(token_user_id);
 
     if( token_user_id != u_id && token_user_id != utils.admin_id)
-        return res.status(403).json({ "err": "User can't enroll anyone else !" });
+        return res.json({ data:null, error: "User can't enroll anyone else !" });
 
     if(u_id == utils.admin_id)
-      return res.status(403).json({ "err": "Admin can't be enrolled !"});
+      return res.json({ data: null, error: "Admin can't be enrolled !"});
 
 
 
@@ -211,7 +207,7 @@ router.put( '/:c_id/enroll', utils.verifyToken, async (req, res) => {
     [err, data] = await to(db.executeQuery(query));
 
     if(err){
-      return res.status(400).json({"err": "Error in enrolling student in course"});
+      return res.json({ data: null, error: "Error in enrolling student in course"});
     }
     
 
@@ -222,10 +218,10 @@ router.put( '/:c_id/enroll', utils.verifyToken, async (req, res) => {
     [err, data] = await to(db.executeQuery(query));
 
     if(err){
-      return res.status(400).json({"err": "Error in updating alloted_slots value"});
+      return res.json({ data: null, error: "Error in updating alloted_slots value"});
     }
 
-    return res.json({ "message": "User is succesfully enrolled !" });
+    return res.json({ data: "User is succesfully enrolled !", error: null });
 
 });
 
@@ -242,7 +238,7 @@ router.put( '/:c_id/disenroll', utils.verifyToken, async (req, res) => {
 
     // Checking if student id is provided or not
     if(!u_id)
-      res.status(400).json({ "err": "Please provide user's id to disenroll !"});
+      res.json({ data: null, error: "Please provide user's id to disenroll !"});
 
 
 
@@ -252,12 +248,12 @@ router.put( '/:c_id/disenroll', utils.verifyToken, async (req, res) => {
     let [err, data] = await to(db.executeQuery(query));
 
     if(err){
-      return res.status(400).json({err});
+      return res.json({ data: null, error: err});
     }
 
 
     if(data[0].cnt == 0)
-      return res.status(400).json({ "err": `No user found with the id ${u_id}` });
+      return res.json({ data: null, error: `No user found with the id ${u_id}` });
 
 
 
@@ -266,12 +262,12 @@ router.put( '/:c_id/disenroll', utils.verifyToken, async (req, res) => {
 
     [err, data] = await to(db.executeQuery(query));
     if(err){
-      return res.status(400).json({err});
+      return res.json({ data: null, error: err});
     }
 
 
     if(data[0].cnt == 0)
-      return res.status(400).json({ "err": `No course found with the id ${c_id}` });
+      return res.json({ data: null, error: `No course found with the id ${c_id}` });
 
     let avl = data[0].available_slots;
     avl = avl+1;
@@ -283,17 +279,17 @@ router.put( '/:c_id/disenroll', utils.verifyToken, async (req, res) => {
     
     [err, data] = await to(db.executeQuery(query));
     if(err){
-      return res.status(400).json({err});
+      return res.json({ data: null, error: err});
     }
 
     if(data[0].cnt==0)
-      return res.status(400).json({ "err": "The student is not enrolled in the course!" });
+      return res.json({ data: null, error: "The student is not enrolled in the course!" });
 
 
     // Checking if the user wants to disenroll themself or other or admin wantgs to disenroll
     let token_user_id = res.cur_user.id;
     if( token_user_id != u_id && token_user_id != utils.admin_id)
-        return res.status(403).json({ "err": "User can't disenroll anyone else !" });
+        return res.json({ data: null, error: "User can't disenroll anyone else !" });
 
 
 
@@ -303,7 +299,7 @@ router.put( '/:c_id/disenroll', utils.verifyToken, async (req, res) => {
     [err, data] = await to(db.executeQuery(query));
 
     if(err){
-      return res.status(400).json({"err": "Error in disenrolling user from course"});
+      return res.json({ data: null, error: "Error in disenrolling user from course"});
     }
     
 
@@ -314,10 +310,10 @@ router.put( '/:c_id/disenroll', utils.verifyToken, async (req, res) => {
     [err, data] = await to(db.executeQuery(query));
 
     if(err){
-      return res.status(400).json({"err": "Error in updating alloted_slots value"});
+      return res.json({ data: null, error: "Error in updating alloted_slots value"});
     }
 
-    return res.json({ "message": "User is succesfully disenrolled from the course!" });
+    return res.json({ data: "User is succesfully disenrolled from the course!", error: null });
 
 });
  
