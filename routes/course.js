@@ -18,6 +18,7 @@ router.get('/', async function(req, res, next) {
   if(err){
     return res.json({data:null, error: err});
   }
+
   return res.json({data, error: null});
 
 });
@@ -39,13 +40,18 @@ router.get('/:c_id', async (req, res, next) => {
 
     let enrolled_users;
     [err, enrolled_users] = await to(db.executeQuery( query ));
+    
+
+    let enrolled = [];
+    enrolled_users.forEach( (enr) => enrolled.push(enr.user_id));
+    data[0]["enrolled_users"] = enrolled;
 
     if(err){
       return res.json({data:null, error: err});
     }
 
 
-    return res.json({ data: { 'data': data, "enrolled users": enrolled_users}, error: null });
+    return res.json({ data, error: null });
 });
 
 
