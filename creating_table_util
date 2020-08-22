@@ -1,0 +1,10 @@
+create table users(id int PRIMARY KEY AUTO_INCREMENT, name varchar(30) NOT NULL, email varchar(20) UNIQUE NOT NULL, encrypted_pass varchar(100) NOT NULL, login_status boolean NOT NULL);
+
+create table courses(id int PRIMARY KEY AUTO_INCREMENT, name varchar(20) NOT NULL, description varchar(30), available_slots int NOT NULL);
+
+
+
+
+create table enrollment(id int PRIMARY KEY AUTO_INCREMENT, course_id int NOT NULL, user_id int NOT NULL, FOREIGN KEY(course_id) references courses(id), FOREIGN KEY(user_id) references users(id));
+
+insert into enrollment(course_id, user_id) values(3, 2),(1,1);
