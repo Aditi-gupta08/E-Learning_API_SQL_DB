@@ -16,11 +16,16 @@ const { token } = require('morgan');
 
 router.post('/signup', async (req, res) => {
 
-    let {name, email, password} = req.body;
+    // Validation
+    let validated = await utils.validate_signup.validate(req.body);
 
-    if(!name || !email || !password){
-        res.json({ data: null, error: 'Please enter all 3 details of the user'});
+    if(validated && validated.error)
+    {
+        return res.json({ data: null, error: validated["error"].message });
     }
+
+
+    let {name, email, password} = req.body;
 
     // Checking if user has already signed up   
     let query = `SELECT count(*) as cnt FROM users where email= \'${email}\'`;
@@ -56,11 +61,16 @@ router.post('/signup', async (req, res) => {
 
 router.put('/login', async (req, res) => {
 
-    let {email, password} = req.body;
+    // Validation 
+    let validated = await utils.validate_login.validate(req.body);
 
-    if(!email || !password){
-        res.json({ data: null, error: 'Please enter both details of the user: email, password'});
+    if(validated && validated.error)
+    {
+        return res.json({ data: null, error: validated["error"].message });
     }
+        
+
+    let {email, password} = req.body;
 
     // Checking if user is signed up or not   
     let query = `SELECT *, count(*) as cnt FROM users where email= \'${email}\'`;

@@ -25,15 +25,20 @@ router.get('/', async function(req, res, next) {
 
 
 // GET a course by id 
-router.get('/:c_id', async (req, res, next) => {
+router.get('/:c_id', utils.verifyToken, async (req, res, next) => {
 
-    let query = `SELECT * FROM courses WHERE id= ${req.params.c_id}`;
+    let query = `SELECT *, count(*) as cnt FROM courses WHERE id= ${req.params.c_id}`;
 
     let [err, data] = await to(db.executeQuery( query ));
 
     if(err){
       return res.json({data: null, error: err});
     }
+
+    if( data[0].cnt==0)
+        return res.json({ data: null, error: "No course is present with this id"});
+
+    delete data[0].cnt;
 
 
     query = `SELECT user_id FROM enrollment WHERE course_id= ${req.params.c_id}`;
@@ -60,7 +65,6 @@ router.get('/:c_id', async (req, res, next) => {
 // Add course
 router.post( '/addcourse', utils.verifyToken, async (req, res) => {
 
-    let {name, description, available_slots} = req.body;
 
     // Checking the user should be admin
     let token_user_id = res.cur_user.id;
@@ -68,19 +72,18 @@ router.post( '/addcourse', utils.verifyToken, async (req, res) => {
     if( token_user_id != utils.admin_id)
         return res.json({ data: null, error: "Only admin can add a course!" });
 
+    
+    // Validation
+    let validated = await utils.validate_addCourse.validate(req.body);
 
-    if( !name)
-      return res.json({ data: null, error: 'Please provide name of the course'});
-
-    if(!available_slots)
-      return res.json({ data: null, error: 'Please provide available slots of the course'});
-
-    available_slots = parseInt( available_slots );
-
-    if( available_slots <= 0)
-      return res.json({ data: null, error: 'Available slots should be positive'});
+    if(validated && validated.error)
+    {
+        return res.json({ data: null, error: validated["error"].message });
+    }
 
 
+
+    let {name, description, available_slots} = req.body;
 
     let query = `INSERT INTO courses(name, description, available_slots) VALUES( \'${name}\', \'${description}\', ${available_slots})`;
 
@@ -102,7 +105,7 @@ router.delete( '/delete/:c_id', utils.verifyToken, async (req, res) => {
   // Checking the user should be admin
   let token_user_id = res.cur_user.id;
 
-  if( token_user_id == utils.admin_id)
+  if( token_user_id != utils.admin_id)
       return res.json({ data: null, error: "Only admin can delete a course!" });
 
 
@@ -141,10 +144,14 @@ router.put( '/:c_id/enroll', utils.verifyToken, async (req, res) => {
     const c_id = req.params.c_id;
     const u_id = req.body.user_id; 
 
-    // Checking if student id is provided or not
-    if(!u_id)
-      return res.json({ data: null, error: "Please provide user's id to enroll !"});
 
+    // Validation
+    let validated = await utils.validate_enrollStudent.validate(req.body);
+
+    if(validated && validated.error)
+    {
+        return res.json({ data: null, error: validated["error"].message });
+    }
 
 
     // Checking if user id is invalid    
@@ -236,11 +243,21 @@ router.put( '/:c_id/enroll', utils.verifyToken, async (req, res) => {
 
 
 
-// Deregister a student from a course
+// Deenroll a student from a course
 router.put( '/:c_id/disenroll', utils.verifyToken, async (req, res) => {
 
     const c_id = req.params.c_id;
     const u_id = req.body.user_id; 
+
+
+    // Validation
+    let validated = await utils.validate_enrollStudent.validate(req.body);
+
+    if(validated && validated.error)
+    {
+        return res.json({ data: null, error: validated["error"].message });
+    }
+
 
     // Checking if student id is provided or not
     if(!u_id)
@@ -322,138 +339,6 @@ router.put( '/:c_id/disenroll', utils.verifyToken, async (req, res) => {
     return res.json({ data: "User is succesfully disenrolled from the course!", error: null });
 
 });
- 
-
-
-
-/* 
-// Enroll a student into a course
-router.put( '/:c_id/enroll', utils.verifyToken, (req, res) => {
-
-  let {student_id} = req.body;
-  
-  try{
-
-        let COURSES = JSON.parse(fs.readFileSync(cour_path));
-        let STUDENTS = JSON.parse(fs.readFileSync(stu_path));
-
-        var c_id = req.params.c_id;
-        const c_found = COURSES.some( course => course.id === parseInt(req.params.c_id));
-
-        // Check if that course do not exist
-        if( !c_found)
-            throw {error: `No course found with the id ${c_id}`};
-
-
-        var choosed_course = COURSES.filter( course => course.id === parseInt(c_id));
-        choosed_course = choosed_course[0];
-        var enrolled = choosed_course.enrolledStudents;
-            
-        // Check available slots in that course
-        if( choosed_course["availableSlots"] <= 0)
-          throw {error: 'No available slots left in this course'};
-
-
-        if( !student_id)
-            throw {error: 'Please provide a student id to enroll in the course.'};
-            
-        // Check if the student with that id is present or not
-        const s_found = STUDENTS.find( stud => stud.id === parseInt(student_id));
-
-        if( !s_found)
-        {
-            throw {error: `No student with the id ${student_id} is present`};
-        }  
-
-
-        // Check if student is already enrolled in the course or not 
-        var ind = enrolled.indexOf(parseInt(student_id));
-
-        if( ind !=-1)
-          throw {error: "Student is already registered!" } ;
-        else
-        {
-          if(res.cur_user.email != s_found.email)
-              res.status(400).json({"err": "Students can only enroll themselves !" });
-
-          choosed_course.availableSlots-=1;
-          enrolled.push( student_id );
-          fs.writeFileSync(cour_path, JSON.stringify(COURSES, null, 2));
-
-          res.send( {success: true});
-        }
-  } 
-
-  catch(error) {
-    res.status(400).json( error );
-  }
-
-});
- 
-
-// Deregister a student from a course
-router.put( '/:c_id/deregister', utils.verifyToken, (req, res) => {
-
-  let {student_id} = req.body;
-
-  try {
-      let c_id = req.params.c_id;
-
-      let COURSES = JSON.parse(fs.readFileSync(cour_path));
-      let STUDENTS = JSON.parse(fs.readFileSync(stu_path));
-
-      const c_found = COURSES.some( course => course.id === parseInt(req.params.c_id));
-
-      // Check if that course do not exist
-      if( !c_found)
-      { 
-        throw {error: `No course found with the id ${c_id}`};
-      }
-
-
-      var choosed_course = COURSES.filter( course => course.id === parseInt(c_id));
-      choosed_course = choosed_course[0];
-      var enrolled = choosed_course.enrolledStudents;
-
-
-      if( !student_id)
-          throw {error: 'Please provide a student id to deregister from the course.'};
-          
-      // Check if the student with that id is present or not
-      const s_found = STUDENTS.find( stud => stud.id === parseInt(student_id));
-
-      if( !s_found)
-      {
-        throw {error: `No student with the id ${student_id} is present`};
-      }  
-
-      // Check if student is already enrolled in the course or not 
-
-      var ind = enrolled.indexOf(parseInt(student_id));
-
-      if( ind==-1)
-        throw {error: `Student wasn't registered in this course`} ;
-      else
-      {
-        if(res.cur_user.email != s_found.email)
-          res.status(400).json({"err": "Students can only deregister themselves !" });
-
-        choosed_course.availableSlots+=1;
-        enrolled.splice(ind, 1);
-        fs.writeFileSync(cour_path, JSON.stringify(COURSES, null, 2));
-
-        res.send( {success: true});
-      }
-  }
-  catch(error)
-  {
-    res.status(400).json( error );
-  }
-
-
-});
-
-*/
 
 
 module.exports = router;

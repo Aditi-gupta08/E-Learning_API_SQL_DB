@@ -8,9 +8,11 @@ const uuid = require('uuid');
 const db = require('../data/mysql/index');
 const {to} = require('await-to-js');
 
+
+
 // GET all users 
-router.get( '/', async (req, res) => {
-  let query = 'SELECT * FROM users;';
+router.get( '/', utils.verifyToken, async (req, res) => {
+  let query = 'SELECT id, name, email, login_status FROM users;';
 
   let [err, data] = await to(db.executeQuery(query));
 
@@ -22,17 +24,38 @@ router.get( '/', async (req, res) => {
 });
 
 
+
 // GET user by id
-router.get( '/:u_id', async (req, res) => {
-  let query = `SELECT * FROM users where id= ${req.params.u_id};`;
+router.get( '/:u_id',  async (req, res) => {
+  let query = `SELECT *, count(*) as cnt FROM users where id= ${req.params.u_id};`;
 
   let [err, data] = await to(db.executeQuery(query));
 
   if(err){
     return res.json({data: null, error: err });
   }
+
+  if( data[0].cnt==0)
+      return res.json({ data: null, error: "No user is present with this id"});
+
+  delete data[0].cnt;
+  delete data[0].encrypted_pass;
+
   
-  return res.json({data, error: null });
+  query = `SELECT name FROM courses WHERE id IN( SELECT course_id FROM enrollment WHERE user_id= ${req.params.u_id})`;
+
+  let enrolled_in_courses;
+  [err, enrolled_in_courses] = await to(db.executeQuery(query));
+
+  if(err){
+    return res.json({data: null, error: err });
+  }
+
+  let enrolled = [];
+  enrolled_in_courses.forEach( (enr) => enrolled.push(enr.name));
+  data[0]["enrolled_in_courses"] = enrolled;
+
+  return res.json({data: data[0], error: null });
 });
 
 

@@ -4,8 +4,9 @@ const { resolve } = require('path');
 const connection = mysql.createConnection({
     host     : 'localhost',
     user     : 'root',
-    password : 'Aditi@08',
-    database : 'devsnest'
+    password : '',
+    database : 'devsnest',
+    port: 3307
   });
 
 const connectDB = () => {

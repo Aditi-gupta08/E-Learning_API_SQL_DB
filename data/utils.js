@@ -7,6 +7,8 @@ const stu_path = path.join(__dirname, '..', 'data/STUDENTS.json');
 var {to} = require('await-to-js');
 var bcrypt = require('bcrypt');
 const db = require('../data/mysql/index');
+const joi = require('joi');
+const { JSONCookie } = require('cookie-parser');
 
 
 // Verify token (middleware function)
@@ -85,10 +87,44 @@ const passwordHash = async (password) => {
 };
 
 
-const admin_id = 10;
+const validate_signup = joi.object().keys({
+    name: joi.string().required(),
+    email: joi.string().email().required(),
+    password: joi.string().min(3).max(10).required()
+});
+
+
+const validate_login = joi.object().keys({
+    email: joi.string().email().required(),
+    password: joi.string().min(3).max(10).required()
+});
+
+
+const validate_addCourse = joi.object().keys({
+    name: joi.string().required(),
+    description: joi.string(),
+    available_slots: joi.number().positive().required()
+});
+
+
+const validate_enrollStudent = joi.object().keys({
+    user_id: joi.number().positive().required()
+});
+
+const validate_disenrollStudent = joi.object().keys({
+    user_id: joi.number().positive().required()
+});
+
+
+const admin_id = 1;
 
 module.exports = {
     verifyToken,
     passwordHash,
-    admin_id
+    admin_id,
+    validate_signup,
+    validate_login,
+    validate_addCourse,
+    validate_enrollStudent,
+    validate_disenrollStudent
 };
